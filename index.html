@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>筋疲労マップ (Bodymap)</title>
     <style>
         body {
@@ -12,25 +12,35 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px;
+            padding: 15px;
             margin: 0;
+            box-sizing: border-box;
         }
 
+        /* スマホ向けに横スクロール可能なツールバーに変更 */
         .toolbar {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             margin-bottom: 20px;
             background: white;
-            padding: 15px;
+            padding: 12px;
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            flex-wrap: wrap;
-            justify-content: center;
+            width: 100%;
+            max-width: 500px;
+            overflow-x: auto;
+            white-space: nowrap;
+            -webkit-overflow-scrolling: touch;
+            box-sizing: border-box;
             align-items: center;
         }
 
+        /* スクロールバーを非表示にする（見た目スッキリ） */
+        .toolbar::-webkit-scrollbar { display: none; }
+
         .btn {
-            padding: 8px 16px;
+            flex-shrink: 0; /* ボタンが潰れないようにする */
+            padding: 10px 16px;
             border: 2px solid transparent;
             border-radius: 8px;
             cursor: pointer;
@@ -39,31 +49,27 @@
             transition: all 0.2s;
         }
 
-        /* ツール選択ボタン */
         .tool-btn { background-color: #eee; }
         .tool-btn.active { box-shadow: 0 0 0 2px rgba(74, 110, 224, 0.4); border-color: #4a6ee0; }
 
-        .color-1 { background-color: #c7d2fe; color: #1e3a8a; } /* 軽度: 青系 */
-        .color-2 { background-color: #fdba74; color: #9a3412; } /* 中度: 橙系 */
-        .color-3 { background-color: #ef4444; color: #fff; }    /* 重度: 赤系 */
+        .color-1 { background-color: #c7d2fe; color: #1e3a8a; }
+        .color-2 { background-color: #fdba74; color: #9a3412; }
+        .color-3 { background-color: #ef4444; color: #fff; }
         .color-eraser { background-color: #f3f4f6; color: #374151; }
 
-        /* アクションボタン */
         .action-btn { background-color: #4a6ee0; color: white; }
         .action-btn:hover { background-color: #3858c0; }
         .reset-btn { background-color: #fff; color: #666; border: 1px solid #ccc; }
-        .reset-btn:hover { background-color: #f0f0f0; }
 
-        /* マップコンテナ */
         .map-container {
             position: relative;
-            background-color: #fdf6e9; /* 背景色 */
+            background-color: #fdf6e9;
             border-radius: 12px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             overflow: hidden;
             width: 100%;
             max-width: 400px;
-            aspect-ratio: 1 / 2; /* human.webpに合わせた縦長比率に調整（自動追従） */
+            aspect-ratio: 1 / 2;
         }
 
         .map-container canvas {
@@ -83,10 +89,10 @@
         <button class="btn tool-btn color-3" data-lvl="3">3 (重度)</button>
         <button class="btn tool-btn color-eraser" id="btn-eraser">消しゴム</button>
         
-        <div style="width: 1px; height: 30px; background-color: #ddd; margin: 0 5px;"></div>
+        <div style="width: 1px; height: 24px; background-color: #ddd; margin: 0 4px; flex-shrink: 0;"></div>
         
         <button class="btn reset-btn" id="btn-reset">リセット</button>
-        <button class="btn action-btn" id="btn-copy">コピー</button>
+        <button class="btn action-btn" id="btn-copy">共有 / コピー</button>
         <button class="btn action-btn" id="btn-save">保存</button>
     </div>
 
@@ -107,7 +113,6 @@
         const mm = { base: null, overlay: null, barrier: null, bctx: null, octx: null, wctx: null, ready: false };
         let brush = { lvl: 1, erase: false };
 
-        // --- 1. 初期化 ---
         document.addEventListener('DOMContentLoaded', () => {
             mm.base = document.getElementById('mmBase');
             mm.overlay = document.getElementById('mmOverlay');
@@ -121,25 +126,21 @@
             img.onload = () => {
                 const w = img.naturalWidth;
                 const h = img.naturalHeight;
-                
-                // コンテナのアスペクト比を画像に合わせる
                 document.getElementById('mmWrap').style.aspectRatio = `${w} / ${h}`;
 
                 [mm.base, mm.overlay, mm.barrier].forEach(c => { 
                     c.width = w; c.height = h; 
                 });
 
-                // ベース画像の描画
                 mm.bctx.drawImage(img, 0, 0, w, h);
                 makeBarrierFromBase(w, h);
                 mm.ready = true;
                 setupEvents();
             };
-            img.onerror = () => alert('画像(human.webp)の読み込みに失敗しました。同じフォルダに配置してください。');
+            img.onerror = () => alert('画像(human.webp)の読み込みに失敗しました。');
             img.src = MM.IMG_SRC;
         });
 
-        // --- 2. バリア（壁）生成アルゴリズム ---
         let __tmpC = null, __tmpX = null;
         function tmpCtx(w, h) {
             if (!__tmpC) { __tmpC = document.createElement('canvas'); __tmpX = __tmpC.getContext('2d', { willReadFrequently: true }); }
@@ -202,7 +203,6 @@
             }
         }
 
-        // --- 3. 塗りつぶし・消去 (Flood Fill) ---
         function measureFillRegion(sx, sy) {
             const w = mm.octx.canvas.width, h = mm.octx.canvas.height;
             const o = mm.octx.getImageData(0,0,w,h).data;
@@ -277,7 +277,6 @@
             mm.octx.putImageData(o, 0, 0);
         }
 
-        // --- 4. イベント管理 ---
         function mmPixPos(e) {
             const r = mm.overlay.getBoundingClientRect();
             return {
@@ -287,7 +286,6 @@
         }
 
         function setupEvents() {
-            // パレット切替
             const btns = document.querySelectorAll('.tool-btn');
             btns.forEach(btn => {
                 btn.addEventListener('click', (e) => {
@@ -302,15 +300,14 @@
                 });
             });
 
-            // 描画イベント
             let activePointers = new Set();
             mm.overlay.addEventListener('pointerdown', (e) => {
                 mm.overlay.setPointerCapture?.(e.pointerId);
                 activePointers.add(e.pointerId);
-                if (e.pointerType === 'touch' && activePointers.size >= 2) return; // ピンチ操作時は無視
+                if (e.pointerType === 'touch' && activePointers.size >= 2) return;
 
                 const p = mmPixPos(e);
-                if (mm.wctx.getImageData(p.x, p.y, 1, 1).data[3] > 10) return; // 壁の上
+                if (mm.wctx.getImageData(p.x, p.y, 1, 1).data[3] > 10) return;
 
                 if (brush.erase) {
                     floodErase(p.x, p.y);
@@ -322,13 +319,13 @@
                     if (isPainted) {
                         const dist = Math.abs(pixel[0]-targetColor[0]) + Math.abs(pixel[1]-targetColor[1]) + Math.abs(pixel[2]-targetColor[2]);
                         if (dist < 15) {
-                            floodErase(p.x, p.y); // 同じ色なら消す（トグル）
+                            floodErase(p.x, p.y);
                         } else {
                             floodErase(p.x, p.y);
-                            floodFill(p.x, p.y, targetColor); // 違う色なら上書き
+                            floodFill(p.x, p.y, targetColor);
                         }
                     } else {
-                        floodFill(p.x, p.y, targetColor); // 新規塗り
+                        floodFill(p.x, p.y, targetColor);
                     }
                 }
             });
@@ -340,25 +337,22 @@
             mm.overlay.addEventListener('pointerup', onEnd);
             mm.overlay.addEventListener('pointercancel', onEnd);
 
-            // リセット
             document.getElementById('btn-reset').addEventListener('click', () => {
                 mm.octx.clearRect(0, 0, mm.overlay.width, mm.overlay.height);
             });
 
-            // 合成画像の生成
             function getCombinedCanvas() {
                 const canvas = document.createElement('canvas');
                 canvas.width = mm.base.width;
                 canvas.height = mm.base.height;
                 const ctx = canvas.getContext('2d');
-                ctx.fillStyle = '#fdf6e9'; // 背景色
+                ctx.fillStyle = '#fdf6e9';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.drawImage(mm.base, 0, 0);
                 ctx.drawImage(mm.overlay, 0, 0);
                 return canvas;
             }
 
-            // 保存
             document.getElementById('btn-save').addEventListener('click', () => {
                 const a = document.createElement('a');
                 a.download = 'muscle_fatigue_map.png';
@@ -366,17 +360,42 @@
                 a.click();
             });
 
-            // コピー
+            // スマホ向けの堅牢なコピー/共有処理
             document.getElementById('btn-copy').addEventListener('click', () => {
-                getCombinedCanvas().toBlob(blob => {
+                const canvas = getCombinedCanvas();
+                
+                // 1. スマホのネイティブ共有メニュー（最も確実）
+                if (navigator.share) {
+                    canvas.toBlob((blob) => {
+                        const file = new File([blob], 'muscle_map.png', { type: 'image/png' });
+                        navigator.share({
+                            files: [file],
+                            title: '筋疲労マップ',
+                        }).catch(err => {
+                            if (err.name !== 'AbortError') console.error('共有エラー:', err);
+                        });
+                    }, 'image/png');
+                    return;
+                }
+
+                // 2. クリップボードAPI（PC向け）
+                canvas.toBlob(async (blob) => {
                     try {
                         const item = new ClipboardItem({ 'image/png': blob });
-                        navigator.clipboard.write([item]).then(() => alert('コピーしました！'))
-                                 .catch(() => alert('コピーに失敗しました。'));
+                        await navigator.clipboard.write([item]);
+                        alert('画像をコピーしました！');
                     } catch (err) {
-                        alert('ブラウザが画像コピー機能に対応していません。');
+                        // 3. 失敗時の最終手段（別タブで画像を開く）
+                        const w = window.open('about:blank');
+                        if (w) {
+                            w.document.write(`<meta name="viewport" content="width=device-width, initial-scale=1.0">`);
+                            w.document.write(`<img src="${canvas.toDataURL('image/png')}" style="max-width:100%;">`);
+                            w.document.write(`<p style="text-align:center;">画像を長押ししてコピーまたは保存してください。</p>`);
+                        } else {
+                            alert('コピーに失敗しました。ブラウザの権限を確認してください。');
+                        }
                     }
-                });
+                }, 'image/png');
             });
         }
     </script>
