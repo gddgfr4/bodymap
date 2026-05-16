@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>筋疲労マップ</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f5f6f8;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* ツール選択ボタン */
+        .tool-btn {
+            background-color: #eee;
+        }
+        .tool-btn.active {
+            border-color: #4a6ee0;
+            box-shadow: 0 0 0 2px rgba(74, 110, 224, 0.2);
+        }
+
+        /* 各色の定義 */
+        .color-1 { background-color: #c5d0f6; color: #333; }
+        .color-2 { background-color: #f7d0a1; color: #333; }
+        .color-3 { background-color: #ef7b7b; color: white; }
+        .color-eraser { background-color: #f5e4ed; color: #d05c93; }
+
+        /* アクションボタン */
+        .action-btn { background-color: #4a6ee0; color: white; }
+        .action-btn:hover { background-color: #3858c0; }
+        .reset-btn { background-color: #fff; color: #666; border: 1px solid #ccc; }
+        .reset-btn:hover { background-color: #f0f0f0; }
+
+        /* マップコンテナ */
+        .map-container {
+            background-color: #fdf6e9; /* 元画像の背景色に近い色 */
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        /* SVGの筋肉パーツ */
+        .muscle-part {
+            fill: transparent;
+            stroke: #333;
+            stroke-width: 2;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .muscle-part:hover {
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="toolbar">
+        <button class="btn tool-btn color-1 active" data-color="#c5d0f6">1 (軽度)</button>
+        <button class="btn tool-btn color-2" data-color="#f7d0a1">2 (中度)</button>
+        <button class="btn tool-btn color-3" data-color="#ef7b7b">3 (重度)</button>
+        <button class="btn tool-btn color-eraser" data-color="transparent">消しゴム</button>
+        
+        <div style="width: 1px; background-color: #ddd; margin: 0 10px;"></div>
+        
+        <button class="btn reset-btn" id="btn-reset">リセット</button>
+        <button class="btn action-btn" id="btn-copy">画像をコピー</button>
+        <button class="btn action-btn" id="btn-save">画像を保存</button>
+    </div>
+
+    <div class="map-container" id="capture-area">
+        <svg id="body-svg" width="400" height="500" viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg">
+            <circle class="muscle-part" cx="200" cy="50" r="30" />
+            <path class="muscle-part" d="M160,90 L240,90 L230,170 L170,170 Z" />
+            <path class="muscle-part" d="M170,170 L230,170 L220,250 L180,250 Z" />
+            <path class="muscle-part" d="M150,90 L110,180 L125,185 L160,110 Z" />
+            <path class="muscle-part" d="M250,90 L290,180 L275,185 L240,110 Z" />
+            <path class="muscle-part" d="M180,250 L150,370 L180,370 L200,250 Z" />
+            <path class="muscle-part" d="M220,250 L250,370 L220,370 L200,250 Z" />
+            <path class="muscle-part" d="M150,370 L160,480 L180,480 L180,370 Z" />
+            <path class="muscle-part" d="M250,370 L240,480 L220,480 L220,370 Z" />
+        </svg>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let currentColor = '#c5d0f6'; // 初期色は「1」
+
+            // --- 1. 色選択・消しゴムの切り替え ---
+            const toolBtns = document.querySelectorAll('.tool-btn');
+            toolBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    // 全ボタンのアクティブ状態を解除
+                    toolBtns.forEach(b => b.classList.remove('active'));
+                    // クリックされたボタンをアクティブに
+                    const target = e.currentTarget;
+                    target.classList.add('active');
+                    // 現在の選択色を更新
+                    currentColor = target.dataset.color;
+                });
+            });
+
+            // --- 2. 筋肉パーツへの色塗り ---
+            const muscleParts = document.querySelectorAll('.muscle-part');
+            muscleParts.forEach(part => {
+                part.addEventListener('click', (e) => {
+                    e.currentTarget.style.fill = currentColor;
+                });
+            });
+
+            // --- 3. リセット機能 ---
+            document.getElementById('btn-reset').addEventListener('click', () => {
+                muscleParts.forEach(part => {
+                    part.style.fill = 'transparent';
+                });
+            });
+
+            // --- 画像化用ユーティリティ関数 ---
+            // SVGをCanvasに変換する処理
+            function svgToCanvas(callback) {
+                const svgElement = document.getElementById('body-svg');
+                const container = document.getElementById('capture-area');
+                
+                // SVGをXML文字列として取得
+                const xml = new XMLSerializer().serializeToString(svgElement);
+                // base64エンコード
+                const svg64 = btoa(unescape(encodeURIComponent(xml)));
+                const image64 = 'data:image/svg+xml;base64,' + svg64;
+
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = svgElement.clientWidth || 400;
+                    canvas.height = svgElement.clientHeight || 500;
+                    const ctx = canvas.getContext('2d');
+
+                    // 背景色を塗る（透明防止）
+                    ctx.fillStyle = getComputedStyle(container).backgroundColor || '#fdf6e9';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    // SVG画像をCanvasに描画
+                    ctx.drawImage(img, 0, 0);
+                    callback(canvas);
+                };
+                img.src = image64;
+            }
+
+            // --- 4. 画像保存機能 ---
+            document.getElementById('btn-save').addEventListener('click', () => {
+                svgToCanvas((canvas) => {
+                    const a = document.createElement('a');
+                    a.download = 'muscle_fatigue_map.png'; // 保存されるファイル名
+                    a.href = canvas.toDataURL('image/png');
+                    a.click();
+                });
+            });
+
+            // --- 5. クリップボードへコピー機能 ---
+            document.getElementById('btn-copy').addEventListener('click', () => {
+                svgToCanvas((canvas) => {
+                    canvas.toBlob(blob => {
+                        try {
+                            // Clipboard APIを使用して画像をコピー
+                            const item = new ClipboardItem({ 'image/png': blob });
+                            navigator.clipboard.write([item]).then(() => {
+                                alert('画像をクリップボードにコピーしました！');
+                            }).catch(err => {
+                                console.error(err);
+                                alert('コピーに失敗しました。ブラウザが対応していないか、権限がありません。');
+                            });
+                        } catch (err) {
+                            alert('お使いのブラウザは画像コピー機能に対応していません。');
+                        }
+                    }, 'image/png');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
