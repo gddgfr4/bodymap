@@ -5,101 +5,136 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>筋疲労マップ (Bodymap)</title>
     <style>
-        body {
+        /* 画面全体を固定し、スクロールを完全に禁止 */
+        html, body {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            margin: 0; padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             background-color: #f5f6f8;
             color: #333;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 15px;
-            margin: 0;
             box-sizing: border-box;
         }
 
-        /* スマホ向けに横スクロール可能なツールバーに変更 */
-        .toolbar {
+        /* アプリ全体のコンテナ */
+        .app-container {
             display: flex;
-            gap: 8px;
-            margin-bottom: 20px;
-            background: white;
+            flex-direction: column;
+            width: 100%; height: 100%;
             padding: 12px;
+            box-sizing: border-box;
+        }
+
+        /* ツールバー：スクロールなしですべて等幅に収める */
+        .toolbar {
+            background: white;
+            padding: 10px;
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             width: 100%;
-            max-width: 500px;
-            overflow-x: auto;
-            white-space: nowrap;
-            -webkit-overflow-scrolling: touch;
             box-sizing: border-box;
-            align-items: center;
+            flex-shrink: 0;
+            margin-bottom: 12px;
         }
 
-        /* スクロールバーを非表示にする（見た目スッキリ） */
-        .toolbar::-webkit-scrollbar { display: none; }
+        /* ボタンの行構成 */
+        .button-row {
+            display: flex;
+            width: 100%;
+            gap: 6px;
+        }
+        .button-row + .button-row {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #eee;
+        }
 
+        /* 各ボタンのベーススタイル */
         .btn {
-            flex-shrink: 0; /* ボタンが潰れないようにする */
-            padding: 10px 16px;
+            flex: 1; /* 行内で均等に引き伸ばす */
+            text-align: center;
+            padding: 10px 0;
             border: 2px solid transparent;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
             transition: all 0.2s;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .tool-btn { background-color: #eee; }
-        .tool-btn.active { box-shadow: 0 0 0 2px rgba(74, 110, 224, 0.4); border-color: #4a6ee0; }
+        /* 選択中の色・ツール */
+        .tool-btn { background-color: #f3f4f6; color: #4b5563; }
+        .tool-btn.active { border-color: #4a6ee0; box-shadow: 0 0 0 2px rgba(74, 110, 224, 0.2); color: inherit; }
 
-        .color-1 { background-color: #c7d2fe; color: #1e3a8a; }
-        .color-2 { background-color: #fdba74; color: #9a3412; }
-        .color-3 { background-color: #ef4444; color: #fff; }
-        .color-eraser { background-color: #f3f4f6; color: #374151; }
+        .color-1.active { background-color: #c7d2fe; color: #1e3a8a; }
+        .color-2.active { background-color: #fdba74; color: #9a3412; }
+        .color-3.active { background-color: #ef4444; color: #fff; }
+        .color-eraser.active { background-color: #374151; color: #fff; }
 
+        /* アクションボタン */
+        .reset-btn { background-color: #fff; color: #6b7280; border: 1px solid #d1d5db; }
         .action-btn { background-color: #4a6ee0; color: white; }
-        .action-btn:hover { background-color: #3858c0; }
-        .reset-btn { background-color: #fff; color: #666; border: 1px solid #ccc; }
+        .action-btn:active { background-color: #3858c0; }
+
+        /* マップ表示エリア：残りの画面スペースに自動フィット */
+        .map-area {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
 
         .map-container {
             position: relative;
             background-color: #fdf6e9;
             border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
             overflow: hidden;
             width: 100%;
-            max-width: 400px;
-            aspect-ratio: 1 / 2;
+            height: 100%;
+            max-width: 100%;
+            max-height: 100%;
         }
 
         .map-container canvas {
             position: absolute;
             top: 0; left: 0;
             width: 100%; height: 100%;
-            object-fit: contain;
-            touch-action: pan-x pan-y pinch-zoom;
+            object-fit: contain; /* 縦横比を崩さず枠内に収める */
+            touch-action: none;  /* 独自のタッチ処理を行うためブラウザ標準を禁止 */
         }
     </style>
 </head>
 <body>
 
-    <div class="toolbar">
-        <button class="btn tool-btn color-1 active" data-lvl="1">1 (軽度)</button>
-        <button class="btn tool-btn color-2" data-lvl="2">2 (中度)</button>
-        <button class="btn tool-btn color-3" data-lvl="3">3 (重度)</button>
-        <button class="btn tool-btn color-eraser" id="btn-eraser">消しゴム</button>
-        
-        <div style="width: 1px; height: 24px; background-color: #ddd; margin: 0 4px; flex-shrink: 0;"></div>
-        
-        <button class="btn reset-btn" id="btn-reset">リセット</button>
-        <button class="btn action-btn" id="btn-copy">共有 / コピー</button>
-        <button class="btn action-btn" id="btn-save">保存</button>
-    </div>
+    <div class="app-container">
+        <div class="toolbar">
+            <div class="button-row">
+                <button class="btn tool-btn color-1 active" data-lvl="1">1 軽度</button>
+                <button class="btn tool-btn color-2" data-lvl="2">2 中度</button>
+                <button class="btn tool-btn color-3" data-lvl="3">3 重度</button>
+                <button class="btn tool-btn color-eraser" id="btn-eraser">🧼 消去</button>
+            </div>
+            <div class="button-row">
+                <button class="btn reset-btn" id="btn-reset">リセット</button>
+                <button class="btn action-btn" id="btn-copy">共有/コピー</button>
+                <button class="btn action-btn" id="btn-save">画像保存</button>
+            </div>
+        </div>
 
-    <div class="map-container" id="mmWrap">
-        <canvas id="mmBase"></canvas>
-        <canvas id="mmBarrier" style="opacity: 0; pointer-events: none;"></canvas>
-        <canvas id="mmOverlay"></canvas>
+        <div class="map-area">
+            <div class="map-container" id="mmWrap">
+                <canvas id="mmBase"></canvas>
+                <canvas id="mmBarrier" style="opacity: 0; pointer-events: none;"></canvas>
+                <canvas id="mmOverlay"></canvas>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -126,6 +161,8 @@
             img.onload = () => {
                 const w = img.naturalWidth;
                 const h = img.naturalHeight;
+                
+                // アスペクト比をコンテナに設定
                 document.getElementById('mmWrap').style.aspectRatio = `${w} / ${h}`;
 
                 [mm.base, mm.overlay, mm.barrier].forEach(c => { 
@@ -137,7 +174,7 @@
                 mm.ready = true;
                 setupEvents();
             };
-            img.onerror = () => alert('画像(human.webp)の読み込みに失敗しました。');
+            img.onerror = () => alert('画像(human.webp)が読み込めません。同じフォルダに配置してください。');
             img.src = MM.IMG_SRC;
         });
 
@@ -171,233 +208,3 @@
                     let on = 0;
                     for (let dy = -1; dy <= 1 && !on; dy++)
                         for (let dx = -1; dx <= 1; dx++)
-                            if (d[a(x + dx, y + dy)] > 0) { on = 1; break; }
-                    if (on) A[y * w + x] = 255;
-                }
-                for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++)
-                    if (A[y * w + x]) d[a(x, y)] = 255;
-            }
-
-            for (let f = 0; f < MM.FRAME; f++) {
-                for (let x = 0; x < w; x++) { d[a(x, 0)] = 255; d[a(x, h - 1 - f)] = 255; }
-                for (let y = 0; y < h; y++) { d[a(0, y)] = 255; d[a(w - 1 - f, y)] = 255; }
-            }
-
-            blockOutsideAsBarrier(d, w, h);
-            mm.wctx.putImageData(out, 0, 0);
-        }
-
-        function blockOutsideAsBarrier(alphaData, w, h) {
-            const idxA = (x, y) => ((y * w + x) << 2) + 3;
-            const seen = new Uint8Array(w * h);
-            const st = [0, w - 1, (h - 1) * w, (h - 1) * w + (w - 1)];
-            while (st.length) {
-                const p = st.pop();
-                const y = (p / w) | 0, x = p - y * w;
-                if (x < 0 || y < 0 || x >= w || y >= h) continue;
-                const si = y * w + x;
-                if (seen[si]) continue; seen[si] = 1;
-                if (alphaData[idxA(x, y)] > 0) continue;
-                alphaData[idxA(x, y)] = 255;
-                st.push(si - 1, si + 1, si - w, si + w);
-            }
-        }
-
-        function measureFillRegion(sx, sy) {
-            const w = mm.octx.canvas.width, h = mm.octx.canvas.height;
-            const o = mm.octx.getImageData(0,0,w,h).data;
-            const b = mm.wctx.getImageData(0,0,w,h).data;
-            const stack = [(sy << 16) | sx];
-            const seen = new Uint8Array(w * h);
-            const within = (x, y) => x >= 0 && y >= 0 && x < w && y < h;
-            let cnt = 0;
-            while (stack.length) {
-                const p = stack.pop();
-                const x = p & 0xffff, y = p >>> 16;
-                if (!within(x, y)) continue;
-                const si = y * w + x;
-                if (seen[si]) continue; seen[si] = 1;
-                const i = (y * w + x) << 2;
-                if (b[i+3] > 10 || o[i+3] > 10) continue;
-                cnt++;
-                stack.push((y << 16) | (x - 1), (y << 16) | (x + 1), ((y - 1) << 16) | x, ((y + 1) << 16) | x);
-            }
-            return cnt;
-        }
-
-        function floodFill(sx, sy, rgba) {
-            const w = mm.octx.canvas.width, h = mm.octx.canvas.height;
-            const tryArea = measureFillRegion(sx, sy);
-            if (tryArea < MM.MIN_REGION_PX || tryArea > w * h * MM.MAX_REGION_FRAC) return;
-
-            const o = mm.octx.getImageData(0, 0, w, h);
-            const b = mm.wctx.getImageData(0, 0, w, h);
-            const stack = [(sy << 16) | sx];
-            const seen = new Uint8Array(w * h);
-            const within = (x, y) => x >= 0 && y >= 0 && x < w && y < h;
-
-            while (stack.length) {
-                const p = stack.pop();
-                const x = p & 0xffff, y = p >>> 16;
-                if (!within(x, y)) continue;
-                const si = y * w + x;
-                if (seen[si]) continue; seen[si] = 1;
-
-                const i = (y * w + x) << 2;
-                if (b.data[i+3] > 10 || o.data[i+3] > 10) continue;
-
-                o.data[i] = rgba[0]; o.data[i+1] = rgba[1]; o.data[i+2] = rgba[2]; o.data[i+3] = rgba[3];
-                stack.push((y << 16) | (x - 1), (y << 16) | (x + 1), ((y - 1) << 16) | x, ((y + 1) << 16) | x);
-            }
-            mm.octx.putImageData(o, 0, 0);
-        }
-
-        function floodErase(sx, sy) {
-            const w = mm.octx.canvas.width, h = mm.octx.canvas.height;
-            const o = mm.octx.getImageData(0, 0, w, h);
-            const b = mm.wctx.getImageData(0, 0, w, h);
-            const stack = [(sy << 16) | sx];
-            const seen = new Uint8Array(w * h);
-            const within = (x, y) => x >= 0 && y >= 0 && x < w && y < h;
-            if (o.data[((sy * w + sx) << 2) + 3] <= 10) return;
-
-            while (stack.length) {
-                const p = stack.pop();
-                const x = p & 0xffff, y = p >>> 16;
-                if (!within(x, y)) continue;
-                const si = y * w + x;
-                if (seen[si]) continue; seen[si] = 1;
-
-                const i = (y * w + x) << 2;
-                if (b.data[i+3] > 10 || o.data[i+3] <= 10) continue;
-
-                o.data[i] = o.data[i+1] = o.data[i+2] = o.data[i+3] = 0;
-                stack.push((y << 16) | (x - 1), (y << 16) | (x + 1), ((y - 1) << 16) | x, ((y + 1) << 16) | x);
-            }
-            mm.octx.putImageData(o, 0, 0);
-        }
-
-        function mmPixPos(e) {
-            const r = mm.overlay.getBoundingClientRect();
-            return {
-                x: Math.floor((e.clientX - r.left) * (mm.overlay.width / r.width)),
-                y: Math.floor((e.clientY - r.top) * (mm.overlay.height / r.height))
-            };
-        }
-
-        function setupEvents() {
-            const btns = document.querySelectorAll('.tool-btn');
-            btns.forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    btns.forEach(b => b.classList.remove('active'));
-                    e.currentTarget.classList.add('active');
-                    if (e.currentTarget.id === 'btn-eraser') {
-                        brush.erase = true;
-                    } else {
-                        brush.erase = false;
-                        brush.lvl = Number(e.currentTarget.dataset.lvl);
-                    }
-                });
-            });
-
-            let activePointers = new Set();
-            mm.overlay.addEventListener('pointerdown', (e) => {
-                mm.overlay.setPointerCapture?.(e.pointerId);
-                activePointers.add(e.pointerId);
-                if (e.pointerType === 'touch' && activePointers.size >= 2) return;
-
-                const p = mmPixPos(e);
-                if (mm.wctx.getImageData(p.x, p.y, 1, 1).data[3] > 10) return;
-
-                if (brush.erase) {
-                    floodErase(p.x, p.y);
-                } else {
-                    const targetColor = MM.LEVELS[brush.lvl];
-                    const pixel = mm.octx.getImageData(p.x, p.y, 1, 1).data;
-                    const isPainted = pixel[3] > 50;
-
-                    if (isPainted) {
-                        const dist = Math.abs(pixel[0]-targetColor[0]) + Math.abs(pixel[1]-targetColor[1]) + Math.abs(pixel[2]-targetColor[2]);
-                        if (dist < 15) {
-                            floodErase(p.x, p.y);
-                        } else {
-                            floodErase(p.x, p.y);
-                            floodFill(p.x, p.y, targetColor);
-                        }
-                    } else {
-                        floodFill(p.x, p.y, targetColor);
-                    }
-                }
-            });
-
-            const onEnd = (e) => {
-                mm.overlay.releasePointerCapture?.(e.pointerId);
-                activePointers.delete(e.pointerId);
-            };
-            mm.overlay.addEventListener('pointerup', onEnd);
-            mm.overlay.addEventListener('pointercancel', onEnd);
-
-            document.getElementById('btn-reset').addEventListener('click', () => {
-                mm.octx.clearRect(0, 0, mm.overlay.width, mm.overlay.height);
-            });
-
-            function getCombinedCanvas() {
-                const canvas = document.createElement('canvas');
-                canvas.width = mm.base.width;
-                canvas.height = mm.base.height;
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = '#fdf6e9';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(mm.base, 0, 0);
-                ctx.drawImage(mm.overlay, 0, 0);
-                return canvas;
-            }
-
-            document.getElementById('btn-save').addEventListener('click', () => {
-                const a = document.createElement('a');
-                a.download = 'muscle_fatigue_map.png';
-                a.href = getCombinedCanvas().toDataURL('image/png');
-                a.click();
-            });
-
-            // スマホ向けの堅牢なコピー/共有処理
-            document.getElementById('btn-copy').addEventListener('click', () => {
-                const canvas = getCombinedCanvas();
-                
-                // 1. スマホのネイティブ共有メニュー（最も確実）
-                if (navigator.share) {
-                    canvas.toBlob((blob) => {
-                        const file = new File([blob], 'muscle_map.png', { type: 'image/png' });
-                        navigator.share({
-                            files: [file],
-                            title: '筋疲労マップ',
-                        }).catch(err => {
-                            if (err.name !== 'AbortError') console.error('共有エラー:', err);
-                        });
-                    }, 'image/png');
-                    return;
-                }
-
-                // 2. クリップボードAPI（PC向け）
-                canvas.toBlob(async (blob) => {
-                    try {
-                        const item = new ClipboardItem({ 'image/png': blob });
-                        await navigator.clipboard.write([item]);
-                        alert('画像をコピーしました！');
-                    } catch (err) {
-                        // 3. 失敗時の最終手段（別タブで画像を開く）
-                        const w = window.open('about:blank');
-                        if (w) {
-                            w.document.write(`<meta name="viewport" content="width=device-width, initial-scale=1.0">`);
-                            w.document.write(`<img src="${canvas.toDataURL('image/png')}" style="max-width:100%;">`);
-                            w.document.write(`<p style="text-align:center;">画像を長押ししてコピーまたは保存してください。</p>`);
-                        } else {
-                            alert('コピーに失敗しました。ブラウザの権限を確認してください。');
-                        }
-                    }
-                }, 'image/png');
-            });
-        }
-    </script>
-</body>
-</html>
