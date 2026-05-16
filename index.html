@@ -13,7 +13,7 @@
             overflow: hidden;
             margin: 0; padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: #e5e7eb; /* PC用の背景（落ち着いたグレー） */
+            background-color: #e5e7eb;
             color: #333;
             box-sizing: border-box;
             display: flex;
@@ -21,24 +21,20 @@
             align-items: center;
         }
 
-        /* アプリ全体のコンテナ：PCでは中央寄せのカード、スマホでは全画面に自動変形 */
         .app-container {
             display: flex;
             flex-direction: column;
             width: 100%; height: 100%;
-            max-width: 460px; /* PCでの間延びを防ぐ最適な横幅 */
+            max-width: 460px;
             padding: 16px;
             box-sizing: border-box;
-            background-color: #f5f6f8; /* アプリ本体の背景色 */
+            background-color: #f5f6f8;
             box-shadow: 0 10px 25px rgba(0,0,0,0.05);
             border-radius: 16px;
         }
 
-        /* スマホ環境（画面幅480px以下）のレイアウト最適化 */
         @media (max-width: 480px) {
-            html, body {
-                background-color: #f5f6f8; /* 背景をアプリと統一 */
-            }
+            html, body { background-color: #f5f6f8; }
             .app-container {
                 padding: 12px;
                 box-shadow: none;
@@ -46,7 +42,6 @@
             }
         }
 
-        /* ツールバー：スクロールなしですべて等幅に収める */
         .toolbar {
             background: white;
             padding: 10px;
@@ -58,77 +53,67 @@
             margin-bottom: 12px;
         }
 
-        /* ボタンの行構成 */
-        .button-row {
-            display: flex;
-            width: 100%;
-            gap: 6px;
-        }
+        .button-row { display: flex; width: 100%; gap: 6px; }
         .button-row + .button-row {
-            margin-top: 8px;
-            padding-top: 8px;
-            border-top: 1px solid #eee;
+            margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee;
         }
 
-        /* 各ボタンのベーススタイル */
         .btn {
-            flex: 1;
-            text-align: center;
-            padding: 10px 0;
-            border: 2px solid transparent;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: bold;
-            transition: all 0.2s;
-            box-sizing: border-box;
+            flex: 1; text-align: center; padding: 10px 0;
+            border: 2px solid transparent; border-radius: 8px;
+            cursor: pointer; font-size: 13px; font-weight: bold;
+            transition: all 0.2s; box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* 選択ツールボタン */
         .tool-btn { background-color: #f3f4f6; color: #4b5563; }
         .tool-btn:not(.active):hover { background-color: #e5e7eb; }
         .tool-btn.active { border-color: #4a6ee0; box-shadow: 0 0 0 2px rgba(74, 110, 224, 0.15); color: inherit; }
 
-        /* レベル別の選択中カラー */
         .color-1.active { background-color: #c7d2fe; color: #1e3a8a; }
         .color-2.active { background-color: #fdba74; color: #9a3412; }
         .color-3.active { background-color: #ef4444; color: #fff; }
         .color-eraser.active { background-color: #374151; color: #fff; }
 
-        /* アクションボタン */
         .reset-btn { background-color: #fff; color: #6b7280; border: 1px solid #d1d5db; }
         .reset-btn:hover { background-color: #f9fafb; border-color: #9ca3af; }
-        
         .action-btn { background-color: #4a6ee0; color: white; }
         .action-btn:hover { background-color: #3858c0; }
 
-        /* マップ表示エリア：残りの画面スペースに自動で完全フィット */
         .map-area {
-            flex: 1;
-            min-height: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
+            flex: 1; min-height: 0; display: flex;
+            align-items: center; justify-content: center; width: 100%;
         }
 
+        /* コンテナはイベント受け取り用 */
         .map-container {
             position: relative;
             background-color: #fdf6e9;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.05); /* 内側にシャドウを入れて枠を表現 */
             overflow: hidden;
             width: 100%; height: 100%;
             max-width: 100%; max-height: 100%;
+            touch-action: none; /* ブラウザ標準のズーム・スクロールを無効化 */
+            cursor: grab;
         }
+        .map-container:active { cursor: grabbing; }
 
-        .map-container canvas {
+        /* 実際にズーム・パンで動かすラッパー要素 */
+        .canvas-wrapper {
             position: absolute;
             top: 0; left: 0;
             width: 100%; height: 100%;
-            object-fit: contain; /* 画面比率に応じて自動で枠内に綺麗に収める */
-            touch-action: none;
+            transform-origin: 0 0; /* 左上を基準にしてJSで座標計算 */
+            will-change: transform;
+        }
+
+        .canvas-wrapper canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: contain;
+            pointer-events: none; /* 個別のcanvasはイベントを受け取らない */
         }
     </style>
 </head>
@@ -151,9 +136,11 @@
 
         <div class="map-area">
             <div class="map-container" id="mmWrap">
-                <canvas id="mmBase"></canvas>
-                <canvas id="mmBarrier" style="opacity: 0; pointer-events: none;"></canvas>
-                <canvas id="mmOverlay"></canvas>
+                <div class="canvas-wrapper" id="canvasWrap">
+                    <canvas id="mmBase"></canvas>
+                    <canvas id="mmBarrier"></canvas>
+                    <canvas id="mmOverlay"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -169,10 +156,15 @@
         const mm = { base: null, overlay: null, barrier: null, bctx: null, octx: null, wctx: null, ready: false };
         let brush = { lvl: 1, erase: false };
 
+        // ズーム・パン用の状態変数
+        const transform = { x: 0, y: 0, scale: 1 };
+        let canvasWrap;
+
         document.addEventListener('DOMContentLoaded', () => {
             mm.base = document.getElementById('mmBase');
             mm.overlay = document.getElementById('mmOverlay');
             mm.barrier = document.getElementById('mmBarrier');
+            canvasWrap = document.getElementById('canvasWrap');
             
             mm.bctx = mm.base.getContext('2d', { willReadFrequently: true });
             mm.octx = mm.overlay.getContext('2d', { willReadFrequently: true });
@@ -194,10 +186,11 @@
                 mm.ready = true;
                 setupEvents();
             };
-            img.onerror = () => alert('画像(human.webp)が見つかりません。index.htmlと同じ場所に配置してください。');
+            img.onerror = () => alert('画像(human.webp)が見つかりません。');
             img.src = MM.IMG_SRC;
         });
 
+        // バリア生成ロジック（そのまま）
         let __tmpC = null, __tmpX = null;
         function tmpCtx(w, h) {
             if (!__tmpC) { __tmpC = document.createElement('canvas'); __tmpX = __tmpC.getContext('2d', { willReadFrequently: true }); }
@@ -334,15 +327,59 @@
             mm.octx.putImageData(o, 0, 0);
         }
 
-        function mmPixPos(e) {
-            const r = mm.overlay.getBoundingClientRect();
+        // ==========================================
+        //  ズーム・パン・描画 イベント管理
+        // ==========================================
+
+        function updateTransform() {
+            canvasWrap.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`;
+        }
+
+        function resetTransform() {
+            transform.x = 0;
+            transform.y = 0;
+            transform.scale = 1;
+            updateTransform();
+        }
+
+        // 画面座標(px)を、Canvas本来の解像度座標に変換
+        function mmPixPos(clientX, clientY) {
+            const r = canvasWrap.getBoundingClientRect();
             return {
-                x: Math.floor((e.clientX - r.left) * (mm.overlay.width / r.width)),
-                y: Math.floor((e.clientY - r.top) * (mm.overlay.height / r.height))
+                x: Math.floor((clientX - r.left) * (mm.overlay.width / r.width)),
+                y: Math.floor((clientY - r.top) * (mm.overlay.height / r.height))
             };
         }
 
+        // タップされた時の塗りつぶし処理
+        function handleCanvasTap(clientX, clientY) {
+            const p = mmPixPos(clientX, clientY);
+            if (p.x < 0 || p.y < 0 || p.x >= mm.overlay.width || p.y >= mm.overlay.height) return;
+            if (mm.wctx.getImageData(p.x, p.y, 1, 1).data[3] > 10) return; // 境界線上
+
+            if (brush.erase) {
+                floodErase(p.x, p.y);
+            } else {
+                const targetColor = MM.LEVELS[brush.lvl];
+                const pixel = mm.octx.getImageData(p.x, p.y, 1, 1).data;
+                const isPainted = pixel[3] > 50;
+
+                if (isPainted) {
+                    const dist = Math.abs(pixel[0]-targetColor[0]) + Math.abs(pixel[1]-targetColor[1]) + Math.abs(pixel[2]-targetColor[2]);
+                    if (dist < 15) {
+                        floodErase(p.x, p.y);
+                    } else {
+                        floodErase(p.x, p.y);
+                        floodFill(p.x, p.y, targetColor);
+                    }
+                } else {
+                    floodFill(p.x, p.y, targetColor);
+                }
+            }
+        }
+
         function setupEvents() {
+            // パレット切り替え
             const btns = document.querySelectorAll('.tool-btn');
             btns.forEach(btn => {
                 btn.addEventListener('click', (e) => {
@@ -357,33 +394,128 @@
                 });
             });
 
-            mm.overlay.addEventListener('pointerdown', (e) => {
-                const p = mmPixPos(e);
-                if (mm.wctx.getImageData(p.x, p.y, 1, 1).data[3] > 10) return;
+            const container = document.getElementById('mmWrap');
+            let pointers = [];
+            let isPanning = false;
+            let totalMove = 0;
+            const moveThreshold = 8; // このpx以上指が動いたらタップではなく移動と判定
+            
+            let lastPos = null;
+            let initialDist = 0;
+            let initialScale = 1;
+            let lastCenter = null;
 
-                if (brush.erase) {
-                    floodErase(p.x, p.y);
-                } else {
-                    const targetColor = MM.LEVELS[brush.lvl];
-                    const pixel = mm.octx.getImageData(p.x, p.y, 1, 1).data;
-                    const isPainted = pixel[3] > 50;
-
-                    if (isPainted) {
-                        const dist = Math.abs(pixel[0]-targetColor[0]) + Math.abs(pixel[1]-targetColor[1]) + Math.abs(pixel[2]-targetColor[2]);
-                        if (dist < 15) {
-                            floodErase(p.x, p.y);
-                        } else {
-                            floodErase(p.x, p.y);
-                            floodFill(p.x, p.y, targetColor);
-                        }
-                    } else {
-                        floodFill(p.x, p.y, targetColor);
-                    }
+            // タッチ開始
+            container.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                container.setPointerCapture(e.pointerId);
+                pointers.push(e);
+                
+                if (pointers.length === 1) {
+                    isPanning = false;
+                    totalMove = 0;
+                    lastPos = { x: e.clientX, y: e.clientY };
+                } else if (pointers.length === 2) {
+                    isPanning = true;
+                    initialDist = Math.hypot(pointers[0].clientX - pointers[1].clientX, pointers[0].clientY - pointers[1].clientY);
+                    initialScale = transform.scale;
+                    lastCenter = {
+                        x: (pointers[0].clientX + pointers[1].clientX) / 2,
+                        y: (pointers[0].clientY + pointers[1].clientY) / 2
+                    };
                 }
             });
 
+            // 指・マウスを動かしたとき
+            container.addEventListener('pointermove', (e) => {
+                e.preventDefault();
+                const index = pointers.findIndex(p => p.pointerId === e.pointerId);
+                if (index !== -1) pointers[index] = e;
+
+                if (pointers.length === 1 && lastPos) {
+                    const dx = e.clientX - lastPos.x;
+                    const dy = e.clientY - lastPos.y;
+                    totalMove += Math.hypot(dx, dy);
+                    
+                    if (totalMove > moveThreshold) isPanning = true;
+                    
+                    if (isPanning) {
+                        transform.x += dx;
+                        transform.y += dy;
+                        updateTransform();
+                    }
+                    lastPos = { x: e.clientX, y: e.clientY };
+                    
+                } else if (pointers.length === 2) {
+                    const currentDist = Math.hypot(pointers[0].clientX - pointers[1].clientX, pointers[0].clientY - pointers[1].clientY);
+                    const center = {
+                        x: (pointers[0].clientX + pointers[1].clientX) / 2,
+                        y: (pointers[0].clientY + pointers[1].clientY) / 2
+                    };
+
+                    const newScale = Math.min(Math.max(initialScale * (currentDist / initialDist), 0.5), 10); // 倍率制限 (0.5倍〜10倍)
+                    const scaleRatio = newScale / transform.scale;
+                    
+                    const rect = container.getBoundingClientRect();
+                    const cx = center.x - rect.left;
+                    const cy = center.y - rect.top;
+
+                    transform.x = cx - (cx - transform.x) * scaleRatio;
+                    transform.y = cy - (cy - transform.y) * scaleRatio;
+                    transform.x += center.x - lastCenter.x;
+                    transform.y += center.y - lastCenter.y;
+                    transform.scale = newScale;
+                    
+                    lastCenter = center;
+                    updateTransform();
+                }
+            });
+
+            // タッチ終了
+            const onPointerUp = (e) => {
+                const index = pointers.findIndex(p => p.pointerId === e.pointerId);
+                if (index !== -1) pointers.splice(index, 1);
+
+                if (pointers.length === 0) {
+                    // 指がほとんど動いていなければ「タップ（塗りつぶし）」とみなす
+                    if (!isPanning) {
+                        handleCanvasTap(e.clientX, e.clientY);
+                    }
+                    lastPos = null;
+                    lastCenter = null;
+                } else if (pointers.length === 1) {
+                    lastPos = { x: pointers[0].clientX, y: pointers[0].clientY };
+                    totalMove = moveThreshold + 1; // 1本指が残った場合は引き続き移動状態にする
+                }
+            };
+
+            container.addEventListener('pointerup', onPointerUp);
+            container.addEventListener('pointercancel', onPointerUp);
+
+            // PC用マウスホイールでのズーム
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomFactor = 0.1;
+                const delta = e.deltaY < 0 ? 1 : -1;
+                const newScale = Math.min(Math.max(transform.scale + delta * zoomFactor * transform.scale, 0.5), 10);
+                
+                const rect = container.getBoundingClientRect();
+                const cx = e.clientX - rect.left;
+                const cy = e.clientY - rect.top;
+
+                const scaleRatio = newScale / transform.scale;
+                transform.x = cx - (cx - transform.x) * scaleRatio;
+                transform.y = cy - (cy - transform.y) * scaleRatio;
+                transform.scale = newScale;
+                updateTransform();
+            }, { passive: false });
+
+
+            // --- リセットと出力 ---
+
             document.getElementById('btn-reset').addEventListener('click', () => {
                 mm.octx.clearRect(0, 0, mm.overlay.width, mm.overlay.height);
+                resetTransform(); // 表示位置とズームもリセット
             });
 
             function getCombinedCanvas() {
@@ -398,11 +530,9 @@
                 return canvas;
             }
 
-            // コピー専用ボタン（PCブラウザおよびiOSの最新セキュリティ仕様に完全準拠）
             document.getElementById('btn-copy').addEventListener('click', () => {
                 const canvas = getCombinedCanvas();
                 try {
-                    // ClipboardItemへ直接BlobのPromiseインスタンスを渡すことでユーザーアクション判定の維持・ブロック回避
                     const item = new ClipboardItem({
                         'image/png': new Promise((resolve, reject) => {
                             canvas.toBlob(blob => {
@@ -411,18 +541,14 @@
                             }, 'image/png');
                         })
                     });
-
                     navigator.clipboard.write([item]).then(() => {
                         alert('クリップボードに画像をコピーしました！');
-                    }).catch(() => {
-                        showImagePopup(canvas);
-                    });
+                    }).catch(() => showImagePopup(canvas));
                 } catch (err) {
                     showImagePopup(canvas);
                 }
             });
 
-            // 共有専用ボタン（スマホ標準の共有メニュー呼び出し）
             document.getElementById('btn-share').addEventListener('click', () => {
                 const canvas = getCombinedCanvas();
                 if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([], 'a.png', {type:'image/png'})] })) {
@@ -437,7 +563,592 @@
                         });
                     }, 'image/png');
                 } else {
-                    alert('お使いのブラウザ・環境はシステム共有に対応していません。コピーボタンをご利用ください。');
+                    alert('お使いのブラウザは共有機能に対応していません。コピーをご利用ください。');
+                }
+            });
+        }
+
+        function showImagePopup(canvas) {
+            const dataUrl = canvas.toDataURL('image/png');
+            const w = window.open();
+            if (w) {
+                w.document.write('<meta name="viewport" content="width=device-width, initial-scale=1.0">');
+                w.document.write('<body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f6f8;height:100vh;font-family:sans-serif;box-sizing:border-box;padding:20px;">');
+                w.document.write('<img src="' + dataUrl + '" style="max-width:100%;max-height:80vh;box-shadow:0 4px 10px rgba(0,0,0,0.1);border-radius:12px;">');
+                w.document.write('<p style="margin-top:16px;font-size:14px;color:#333;text-align:center;line-height:1.4;">画像を長押し、または右クリックして「コピー」を行ってください。</p>');
+                w.document.write('</body>');
+            } else {
+                alert('お使いの環境は直接コピーに対応していません。');
+            }
+        }
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>筋疲労マップ (Bodymap)</title>
+    <style>
+        /* 画面全体を固定し、スクロールを完全に禁止 */
+        html, body {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            margin: 0; padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #e5e7eb;
+            color: #333;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%; height: 100%;
+            max-width: 460px;
+            padding: 16px;
+            box-sizing: border-box;
+            background-color: #f5f6f8;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            border-radius: 16px;
+        }
+
+        @media (max-width: 480px) {
+            html, body { background-color: #f5f6f8; }
+            .app-container {
+                padding: 12px;
+                box-shadow: none;
+                border-radius: 0;
+            }
+        }
+
+        .toolbar {
+            background: white;
+            padding: 10px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.03);
+            width: 100%;
+            box-sizing: border-box;
+            flex-shrink: 0;
+            margin-bottom: 12px;
+        }
+
+        .button-row { display: flex; width: 100%; gap: 6px; }
+        .button-row + .button-row {
+            margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee;
+        }
+
+        .btn {
+            flex: 1; text-align: center; padding: 10px 0;
+            border: 2px solid transparent; border-radius: 8px;
+            cursor: pointer; font-size: 13px; font-weight: bold;
+            transition: all 0.2s; box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .tool-btn { background-color: #f3f4f6; color: #4b5563; }
+        .tool-btn:not(.active):hover { background-color: #e5e7eb; }
+        .tool-btn.active { border-color: #4a6ee0; box-shadow: 0 0 0 2px rgba(74, 110, 224, 0.15); color: inherit; }
+
+        .color-1.active { background-color: #c7d2fe; color: #1e3a8a; }
+        .color-2.active { background-color: #fdba74; color: #9a3412; }
+        .color-3.active { background-color: #ef4444; color: #fff; }
+        .color-eraser.active { background-color: #374151; color: #fff; }
+
+        .reset-btn { background-color: #fff; color: #6b7280; border: 1px solid #d1d5db; }
+        .reset-btn:hover { background-color: #f9fafb; border-color: #9ca3af; }
+        .action-btn { background-color: #4a6ee0; color: white; }
+        .action-btn:hover { background-color: #3858c0; }
+
+        .map-area {
+            flex: 1; min-height: 0; display: flex;
+            align-items: center; justify-content: center; width: 100%;
+        }
+
+        /* コンテナはイベント受け取り用 */
+        .map-container {
+            position: relative;
+            background-color: #fdf6e9;
+            border-radius: 12px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.05); /* 内側にシャドウを入れて枠を表現 */
+            overflow: hidden;
+            width: 100%; height: 100%;
+            max-width: 100%; max-height: 100%;
+            touch-action: none; /* ブラウザ標準のズーム・スクロールを無効化 */
+            cursor: grab;
+        }
+        .map-container:active { cursor: grabbing; }
+
+        /* 実際にズーム・パンで動かすラッパー要素 */
+        .canvas-wrapper {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            transform-origin: 0 0; /* 左上を基準にしてJSで座標計算 */
+            will-change: transform;
+        }
+
+        .canvas-wrapper canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: contain;
+            pointer-events: none; /* 個別のcanvasはイベントを受け取らない */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <div class="toolbar">
+            <div class="button-row">
+                <button class="btn tool-btn color-1 active" data-lvl="1">1 軽度</button>
+                <button class="btn tool-btn color-2" data-lvl="2">2 中度</button>
+                <button class="btn tool-btn color-3" data-lvl="3">3 重度</button>
+                <button class="btn tool-btn color-eraser" id="btn-eraser">🧼 消去</button>
+            </div>
+            <div class="button-row">
+                <button class="btn reset-btn" id="btn-reset">リセット</button>
+                <button class="btn action-btn" id="btn-copy">📋 コピー</button>
+                <button class="btn action-btn" id="btn-share">🔗 共有</button>
+            </div>
+        </div>
+
+        <div class="map-area">
+            <div class="map-container" id="mmWrap">
+                <div class="canvas-wrapper" id="canvasWrap">
+                    <canvas id="mmBase"></canvas>
+                    <canvas id="mmBarrier"></canvas>
+                    <canvas id="mmOverlay"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MM = {
+            IMG_SRC: 'human.webp',
+            LEVELS: { 1: [199,210,254,210], 2: [253,186,116,210], 3: [239,68,68,210] },
+            TH_LINE: 130, DILATE: 2, FRAME: 3, TOL: 22,
+            MAX_REGION_FRAC: 0.25, MIN_REGION_PX: 25
+        };
+
+        const mm = { base: null, overlay: null, barrier: null, bctx: null, octx: null, wctx: null, ready: false };
+        let brush = { lvl: 1, erase: false };
+
+        // ズーム・パン用の状態変数
+        const transform = { x: 0, y: 0, scale: 1 };
+        let canvasWrap;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            mm.base = document.getElementById('mmBase');
+            mm.overlay = document.getElementById('mmOverlay');
+            mm.barrier = document.getElementById('mmBarrier');
+            canvasWrap = document.getElementById('canvasWrap');
+            
+            mm.bctx = mm.base.getContext('2d', { willReadFrequently: true });
+            mm.octx = mm.overlay.getContext('2d', { willReadFrequently: true });
+            mm.wctx = mm.barrier.getContext('2d', { willReadFrequently: true });
+
+            const img = new Image();
+            img.onload = () => {
+                const w = img.naturalWidth;
+                const h = img.naturalHeight;
+                
+                document.getElementById('mmWrap').style.aspectRatio = `${w} / ${h}`;
+
+                [mm.base, mm.overlay, mm.barrier].forEach(c => { 
+                    c.width = w; c.height = h; 
+                });
+
+                mm.bctx.drawImage(img, 0, 0, w, h);
+                makeBarrierFromBase(w, h);
+                mm.ready = true;
+                setupEvents();
+            };
+            img.onerror = () => alert('画像(human.webp)が見つかりません。');
+            img.src = MM.IMG_SRC;
+        });
+
+        // バリア生成ロジック（そのまま）
+        let __tmpC = null, __tmpX = null;
+        function tmpCtx(w, h) {
+            if (!__tmpC) { __tmpC = document.createElement('canvas'); __tmpX = __tmpC.getContext('2d', { willReadFrequently: true }); }
+            __tmpC.width = w; __tmpC.height = h;
+            return __tmpX;
+        }
+
+        function makeBarrierFromBase(w, h) {
+            const t = tmpCtx(w, h);
+            t.clearRect(0, 0, w, h);
+            t.drawImage(mm.base, 0, 0);
+
+            const src = t.getImageData(0, 0, w, h).data;
+            const out = mm.wctx.createImageData(w, h);
+            const d = out.data;
+
+            for (let i = 0; i < src.length; i += 4) {
+                const g = 0.299 * src[i] + 0.587 * src[i+1] + 0.114 * src[i+2];
+                d[i] = d[i+1] = d[i+2] = 0;
+                d[i+3] = (g < MM.TH_LINE) ? 255 : 0;
+            }
+
+            const a = (x, y) => ((y * w + x) << 2) + 3;
+            const A = new Uint8Array(w * h);
+            for (let pass = 0; pass < MM.DILATE; pass++) {
+                A.fill(0);
+                for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+                    let on = 0;
+                    for (let dy = -1; dy <= 1 && !on; dy++)
+                        for (let dx = -1; dx <= 1; dx++)
+                            if (d[a(x + dx, y + dy)] > 0) { on = 1; break; }
+                    if (on) A[y * w + x] = 255;
+                }
+                for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++)
+                    if (A[y * w + x]) d[a(x, y)] = 255;
+            }
+
+            for (let f = 0; f < MM.FRAME; f++) {
+                for (let x = 0; x < w; x++) { d[a(x, 0)] = 255; d[a(x, h - 1 - f)] = 255; }
+                for (let y = 0; y < h; y++) { d[a(0, y)] = 255; d[a(w - 1 - f, y)] = 255; }
+            }
+
+            blockOutsideAsBarrier(d, w, h);
+            mm.wctx.putImageData(out, 0, 0);
+        }
+
+        function blockOutsideAsBarrier(alphaData, w, h) {
+            const idxA = (x, y) => ((y * w + x) << 2) + 3;
+            const seen = new Uint8Array(w * h);
+            const st = [0, w - 1, (h - 1) * w, (h - 1) * w + (w - 1)];
+            while (st.length) {
+                const p = st.pop();
+                const y = (p / w) | 0, x = p - y * w;
+                if (x < 0 || y < 0 || x >= w || y >= h) continue;
+                const si = y * w + x;
+                if (seen[si]) continue; seen[si] = 1;
+                if (alphaData[idxA(x, y)] > 0) continue;
+                alphaData[idxA(x, y)] = 255;
+                st.push(si - 1, si + 1, si - w, si + w);
+            }
+        }
+
+        function measureFillRegion(sx, sy) {
+            const w = mm.octx.canvas.width, h = mm.octx.canvas.height;
+            const o = mm.octx.getImageData(0,0,w,h).data;
+            const b = mm.wctx.getImageData(0,0,w,h).data;
+            const stack = [(sy << 16) | sx];
+            const seen = new Uint8Array(w * h);
+            const within = (x, y) => x >= 0 && y >= 0 && x < w && y < h;
+            let cnt = 0;
+            while (stack.length) {
+                const p = stack.pop();
+                const x = p & 0xffff, y = p >>> 16;
+                if (!within(x, y)) continue;
+                const si = y * w + x;
+                if (seen[si]) continue; seen[si] = 1;
+                const i = (y * w + x) << 2;
+                if (b[i+3] > 10 || o[i+3] > 10) continue;
+                cnt++;
+                stack.push((y << 16) | (x - 1), (y << 16) | (x + 1), ((y - 1) << 16) | x, ((y + 1) << 16) | x);
+            }
+            return cnt;
+        }
+
+        function floodFill(sx, sy, rgba) {
+            const w = mm.octx.canvas.width, h = mm.octx.canvas.height;
+            const tryArea = measureFillRegion(sx, sy);
+            if (tryArea < MM.MIN_REGION_PX || tryArea > w * h * MM.MAX_REGION_FRAC) return;
+
+            const o = mm.octx.getImageData(0, 0, w, h);
+            const b = mm.wctx.getImageData(0, 0, w, h);
+            const stack = [(sy << 16) | sx];
+            const seen = new Uint8Array(w * h);
+            const within = (x, y) => x >= 0 && y >= 0 && x < w && y < h;
+
+            while (stack.length) {
+                const p = stack.pop();
+                const x = p & 0xffff, y = p >>> 16;
+                if (!within(x, y)) continue;
+                const si = y * w + x;
+                if (seen[si]) continue; seen[si] = 1;
+
+                const i = (y * w + x) << 2;
+                if (b.data[i+3] > 10 || o.data[i+3] > 10) continue;
+
+                o.data[i] = rgba[0]; o.data[i+1] = rgba[1]; o.data[i+2] = rgba[2]; o.data[i+3] = rgba[3];
+                stack.push((y << 16) | (x - 1), (y << 16) | (x + 1), ((y - 1) << 16) | x, ((y + 1) << 16) | x);
+            }
+            mm.octx.putImageData(o, 0, 0);
+        }
+
+        function floodErase(sx, sy) {
+            const w = mm.octx.canvas.width, h = mm.octx.canvas.height;
+            const o = mm.octx.getImageData(0, 0, w, h);
+            const b = mm.wctx.getImageData(0, 0, w, h);
+            const stack = [(sy << 16) | sx];
+            const seen = new Uint8Array(w * h);
+            const within = (x, y) => x >= 0 && y >= 0 && x < w && y < h;
+            if (o.data[((sy * w + sx) << 2) + 3] <= 10) return;
+
+            while (stack.length) {
+                const p = stack.pop();
+                const x = p & 0xffff, y = p >>> 16;
+                if (!within(x, y)) continue;
+                const si = y * w + x;
+                if (seen[si]) continue; seen[si] = 1;
+
+                const i = (y * w + x) << 2;
+                if (b.data[i+3] > 10 || o.data[i+3] <= 10) continue;
+
+                o.data[i] = o.data[i+1] = o.data[i+2] = o.data[i+3] = 0;
+                stack.push((y << 16) | (x - 1), (y << 16) | (x + 1), ((y - 1) << 16) | x, ((y + 1) << 16) | x);
+            }
+            mm.octx.putImageData(o, 0, 0);
+        }
+
+        // ==========================================
+        //  ズーム・パン・描画 イベント管理
+        // ==========================================
+
+        function updateTransform() {
+            canvasWrap.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`;
+        }
+
+        function resetTransform() {
+            transform.x = 0;
+            transform.y = 0;
+            transform.scale = 1;
+            updateTransform();
+        }
+
+        // 画面座標(px)を、Canvas本来の解像度座標に変換
+        function mmPixPos(clientX, clientY) {
+            const r = canvasWrap.getBoundingClientRect();
+            return {
+                x: Math.floor((clientX - r.left) * (mm.overlay.width / r.width)),
+                y: Math.floor((clientY - r.top) * (mm.overlay.height / r.height))
+            };
+        }
+
+        // タップされた時の塗りつぶし処理
+        function handleCanvasTap(clientX, clientY) {
+            const p = mmPixPos(clientX, clientY);
+            if (p.x < 0 || p.y < 0 || p.x >= mm.overlay.width || p.y >= mm.overlay.height) return;
+            if (mm.wctx.getImageData(p.x, p.y, 1, 1).data[3] > 10) return; // 境界線上
+
+            if (brush.erase) {
+                floodErase(p.x, p.y);
+            } else {
+                const targetColor = MM.LEVELS[brush.lvl];
+                const pixel = mm.octx.getImageData(p.x, p.y, 1, 1).data;
+                const isPainted = pixel[3] > 50;
+
+                if (isPainted) {
+                    const dist = Math.abs(pixel[0]-targetColor[0]) + Math.abs(pixel[1]-targetColor[1]) + Math.abs(pixel[2]-targetColor[2]);
+                    if (dist < 15) {
+                        floodErase(p.x, p.y);
+                    } else {
+                        floodErase(p.x, p.y);
+                        floodFill(p.x, p.y, targetColor);
+                    }
+                } else {
+                    floodFill(p.x, p.y, targetColor);
+                }
+            }
+        }
+
+        function setupEvents() {
+            // パレット切り替え
+            const btns = document.querySelectorAll('.tool-btn');
+            btns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    btns.forEach(b => b.classList.remove('active'));
+                    e.currentTarget.classList.add('active');
+                    if (e.currentTarget.id === 'btn-eraser') {
+                        brush.erase = true;
+                    } else {
+                        brush.erase = false;
+                        brush.lvl = Number(e.currentTarget.dataset.lvl);
+                    }
+                });
+            });
+
+            const container = document.getElementById('mmWrap');
+            let pointers = [];
+            let isPanning = false;
+            let totalMove = 0;
+            const moveThreshold = 8; // このpx以上指が動いたらタップではなく移動と判定
+            
+            let lastPos = null;
+            let initialDist = 0;
+            let initialScale = 1;
+            let lastCenter = null;
+
+            // タッチ開始
+            container.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                container.setPointerCapture(e.pointerId);
+                pointers.push(e);
+                
+                if (pointers.length === 1) {
+                    isPanning = false;
+                    totalMove = 0;
+                    lastPos = { x: e.clientX, y: e.clientY };
+                } else if (pointers.length === 2) {
+                    isPanning = true;
+                    initialDist = Math.hypot(pointers[0].clientX - pointers[1].clientX, pointers[0].clientY - pointers[1].clientY);
+                    initialScale = transform.scale;
+                    lastCenter = {
+                        x: (pointers[0].clientX + pointers[1].clientX) / 2,
+                        y: (pointers[0].clientY + pointers[1].clientY) / 2
+                    };
+                }
+            });
+
+            // 指・マウスを動かしたとき
+            container.addEventListener('pointermove', (e) => {
+                e.preventDefault();
+                const index = pointers.findIndex(p => p.pointerId === e.pointerId);
+                if (index !== -1) pointers[index] = e;
+
+                if (pointers.length === 1 && lastPos) {
+                    const dx = e.clientX - lastPos.x;
+                    const dy = e.clientY - lastPos.y;
+                    totalMove += Math.hypot(dx, dy);
+                    
+                    if (totalMove > moveThreshold) isPanning = true;
+                    
+                    if (isPanning) {
+                        transform.x += dx;
+                        transform.y += dy;
+                        updateTransform();
+                    }
+                    lastPos = { x: e.clientX, y: e.clientY };
+                    
+                } else if (pointers.length === 2) {
+                    const currentDist = Math.hypot(pointers[0].clientX - pointers[1].clientX, pointers[0].clientY - pointers[1].clientY);
+                    const center = {
+                        x: (pointers[0].clientX + pointers[1].clientX) / 2,
+                        y: (pointers[0].clientY + pointers[1].clientY) / 2
+                    };
+
+                    const newScale = Math.min(Math.max(initialScale * (currentDist / initialDist), 0.5), 10); // 倍率制限 (0.5倍〜10倍)
+                    const scaleRatio = newScale / transform.scale;
+                    
+                    const rect = container.getBoundingClientRect();
+                    const cx = center.x - rect.left;
+                    const cy = center.y - rect.top;
+
+                    transform.x = cx - (cx - transform.x) * scaleRatio;
+                    transform.y = cy - (cy - transform.y) * scaleRatio;
+                    transform.x += center.x - lastCenter.x;
+                    transform.y += center.y - lastCenter.y;
+                    transform.scale = newScale;
+                    
+                    lastCenter = center;
+                    updateTransform();
+                }
+            });
+
+            // タッチ終了
+            const onPointerUp = (e) => {
+                const index = pointers.findIndex(p => p.pointerId === e.pointerId);
+                if (index !== -1) pointers.splice(index, 1);
+
+                if (pointers.length === 0) {
+                    // 指がほとんど動いていなければ「タップ（塗りつぶし）」とみなす
+                    if (!isPanning) {
+                        handleCanvasTap(e.clientX, e.clientY);
+                    }
+                    lastPos = null;
+                    lastCenter = null;
+                } else if (pointers.length === 1) {
+                    lastPos = { x: pointers[0].clientX, y: pointers[0].clientY };
+                    totalMove = moveThreshold + 1; // 1本指が残った場合は引き続き移動状態にする
+                }
+            };
+
+            container.addEventListener('pointerup', onPointerUp);
+            container.addEventListener('pointercancel', onPointerUp);
+
+            // PC用マウスホイールでのズーム
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomFactor = 0.1;
+                const delta = e.deltaY < 0 ? 1 : -1;
+                const newScale = Math.min(Math.max(transform.scale + delta * zoomFactor * transform.scale, 0.5), 10);
+                
+                const rect = container.getBoundingClientRect();
+                const cx = e.clientX - rect.left;
+                const cy = e.clientY - rect.top;
+
+                const scaleRatio = newScale / transform.scale;
+                transform.x = cx - (cx - transform.x) * scaleRatio;
+                transform.y = cy - (cy - transform.y) * scaleRatio;
+                transform.scale = newScale;
+                updateTransform();
+            }, { passive: false });
+
+
+            // --- リセットと出力 ---
+
+            document.getElementById('btn-reset').addEventListener('click', () => {
+                mm.octx.clearRect(0, 0, mm.overlay.width, mm.overlay.height);
+                resetTransform(); // 表示位置とズームもリセット
+            });
+
+            function getCombinedCanvas() {
+                const canvas = document.createElement('canvas');
+                canvas.width = mm.base.width;
+                canvas.height = mm.base.height;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#fdf6e9';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(mm.base, 0, 0);
+                ctx.drawImage(mm.overlay, 0, 0);
+                return canvas;
+            }
+
+            document.getElementById('btn-copy').addEventListener('click', () => {
+                const canvas = getCombinedCanvas();
+                try {
+                    const item = new ClipboardItem({
+                        'image/png': new Promise((resolve, reject) => {
+                            canvas.toBlob(blob => {
+                                if (blob) resolve(blob);
+                                else reject(new Error('画質変換エラー'));
+                            }, 'image/png');
+                        })
+                    });
+                    navigator.clipboard.write([item]).then(() => {
+                        alert('クリップボードに画像をコピーしました！');
+                    }).catch(() => showImagePopup(canvas));
+                } catch (err) {
+                    showImagePopup(canvas);
+                }
+            });
+
+            document.getElementById('btn-share').addEventListener('click', () => {
+                const canvas = getCombinedCanvas();
+                if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([], 'a.png', {type:'image/png'})] })) {
+                    canvas.toBlob((blob) => {
+                        if (!blob) return;
+                        const file = new File([blob], 'muscle_map.png', { type: 'image/png' });
+                        navigator.share({
+                            files: [file],
+                            title: '筋疲労マップ',
+                        }).catch(err => {
+                            if (err.name !== 'AbortError') alert('共有に失敗しました。');
+                        });
+                    }, 'image/png');
+                } else {
+                    alert('お使いのブラウザは共有機能に対応していません。コピーをご利用ください。');
                 }
             });
         }
