@@ -6,102 +6,51 @@
     <title>筋疲労マップ (Bodymap)</title>
     <style>
         html, body {
-            min-height: 100vh;
             margin: 0; padding: 0;
+            min-height: 100vh;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             background-color: #e5e7eb;
             color: #333;
-            box-sizing: border-box;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
         }
 
+        /* PC・スマホ共通コンテナ（画面全体を縦に使う） */
         .app-container {
             display: flex;
             flex-direction: column;
             width: 100%;
             max-width: 460px;
-            padding: 8px; /* 余白を削減 */
-            box-sizing: border-box;
+            min-height: 100vh; /* 画面の高さを最低限確保 */
+            margin: 0 auto;
             background-color: #f5f6f8;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            margin: 10px 0;
         }
 
-        @media (max-width: 480px) {
-            html, body { background-color: #f5f6f8; }
+        @media (min-width: 481px) {
             .app-container {
-                padding: 6px;
-                box-shadow: none;
-                margin: 0;
-                height: 100vh; /* スマホでは全画面を使い切る */
+                min-height: calc(100vh - 20px);
+                margin: 10px auto;
+                border-radius: 12px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+                overflow: hidden;
             }
         }
 
-        /* ツールバーを極力コンパクトに */
-        .toolbar {
-            background: white;
-            padding: 6px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
-            width: 100%;
-            box-sizing: border-box;
-            flex-shrink: 0;
-            margin-bottom: 8px;
-        }
-
-        .button-row { display: flex; width: 100%; gap: 4px; }
-        .button-row + .button-row {
-            margin-top: 4px; padding-top: 4px; border-top: 1px solid #eee;
-        }
-
-        .btn {
-            flex: 1; text-align: center; 
-            padding: 6px 2px; /* 高さを削る */
-            border: 2px solid transparent; border-radius: 6px;
-            cursor: pointer; font-size: 11px; /* 文字を小さく */
-            font-weight: bold;
-            transition: all 0.2s; box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        /* 非アクティブ時も薄く色をつける */
-        .color-1 { background-color: #e0e7ff; color: #3730a3; }
-        .color-1.active { background-color: #c7d2fe; border-color: #4a6ee0; }
-
-        .color-2 { background-color: #ffedd5; color: #9a3412; }
-        .color-2.active { background-color: #fdba74; border-color: #ea580c; }
-
-        .color-3 { background-color: #fee2e2; color: #b91c1c; }
-        .color-3.active { background-color: #ef4444; color: #fff; border-color: #dc2626; }
-
-        .color-eraser { background-color: #f3f4f6; color: #4b5563; }
-        .color-eraser.active { background-color: #d1d5db; border-color: #6b7280; }
-
-        .reset-btn { background-color: #fff; color: #6b7280; border: 1px solid #d1d5db; }
-        .reset-btn:hover { background-color: #f9fafb; border-color: #9ca3af; }
-        
-        .action-btn { background-color: #8ba5f9; color: white; border: 1px solid #8ba5f9; }
-        .action-btn:hover { background-color: #7490ec; }
-
-        /* 画像エリアを最大化 */
+        /* 画像エリア（残りの高さをすべて画像に割り当てる） */
         .map-area {
             flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 8px;
             width: 100%;
-            min-height: 0; /* Flexbox内で縮小を許可 */
+            box-sizing: border-box;
+            min-height: 0; /* 画像がはみ出さずに縮小されるようにする */
         }
 
         .map-container {
             position: relative;
             background-color: #fdf6e9;
             border-radius: 8px;
-            overflow: hidden;
             width: 100%; height: 100%;
-            max-width: 100%; max-height: 100%;
         }
 
         .map-container canvas {
@@ -110,11 +59,61 @@
             width: 100%; height: 100%;
             object-fit: contain;
         }
+
+        /* ツールバー（画面下部に固定化・極限まで薄く） */
+        .toolbar {
+            background: white;
+            padding: 6px;
+            width: 100%;
+            box-sizing: border-box;
+            border-top: 1px solid #e5e7eb;
+            flex-shrink: 0; /* 潰れないようにする */
+        }
+
+        .button-row { display: flex; width: 100%; gap: 4px; }
+        .button-row + .button-row { margin-top: 4px; }
+
+        .btn {
+            flex: 1; text-align: center; 
+            padding: 6px 0; /* 縦幅を最小限に */
+            border: 1px solid transparent; border-radius: 4px;
+            cursor: pointer; font-size: 11px;
+            line-height: 1;
+            transition: all 0.2s; box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 非アクティブ時もうっすら色付け */
+        .color-1 { background-color: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
+        .color-1.active { background-color: #c7d2fe; border-color: #4a6ee0; font-weight: bold; }
+
+        .color-2 { background-color: #ffedd5; color: #9a3412; border-color: #fdba74; }
+        .color-2.active { background-color: #fdba74; border-color: #ea580c; font-weight: bold; }
+
+        .color-3 { background-color: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+        .color-3.active { background-color: #ef4444; color: #fff; border-color: #dc2626; font-weight: bold; }
+
+        .color-eraser { background-color: #f3f4f6; color: #4b5563; border-color: #e5e7eb; }
+        .color-eraser.active { background-color: #d1d5db; border-color: #6b7280; font-weight: bold; }
+
+        .reset-btn { background-color: #fff; color: #6b7280; border: 1px solid #d1d5db; }
+        .reset-btn:hover { background-color: #f9fafb; border-color: #9ca3af; }
+        
+        .action-btn { background-color: #8ba5f9; color: white; border: 1px solid #8ba5f9; }
+        .action-btn:hover { background-color: #7490ec; }
     </style>
 </head>
 <body>
 
     <div class="app-container">
+        <div class="map-area">
+            <div class="map-container" id="mmWrap">
+                <canvas id="mmBase"></canvas>
+                <canvas id="mmBarrier" style="opacity: 0; pointer-events: none;"></canvas>
+                <canvas id="mmOverlay"></canvas>
+            </div>
+        </div>
+
         <div class="toolbar">
             <div class="button-row">
                 <button class="btn tool-btn color-1 active" data-lvl="1">1 軽度</button>
@@ -126,14 +125,6 @@
                 <button class="btn reset-btn" id="btn-reset">リセット</button>
                 <button class="btn action-btn" id="btn-copy">コピー</button>
                 <button class="btn action-btn" id="btn-share">共有</button>
-            </div>
-        </div>
-
-        <div class="map-area">
-            <div class="map-container" id="mmWrap">
-                <canvas id="mmBase"></canvas>
-                <canvas id="mmBarrier" style="opacity: 0; pointer-events: none;"></canvas>
-                <canvas id="mmOverlay"></canvas>
             </div>
         </div>
     </div>
