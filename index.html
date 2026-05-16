@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>筋疲労マップ (Bodymap)</title>
     <style>
-        /* スクロール禁止を解除 */
         html, body {
             min-height: 100vh;
             margin: 0; padding: 0;
@@ -15,7 +14,7 @@
             box-sizing: border-box;
             display: flex;
             justify-content: center;
-            align-items: flex-start; /* 上寄せにしてスクロールしやすくする */
+            align-items: flex-start;
         }
 
         .app-container {
@@ -23,81 +22,86 @@
             flex-direction: column;
             width: 100%;
             max-width: 460px;
-            padding: 16px;
+            padding: 8px; /* 余白を削減 */
             box-sizing: border-box;
             background-color: #f5f6f8;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-            border-radius: 16px;
-            margin: 20px 0; /* 上下の余白を確保 */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin: 10px 0;
         }
 
         @media (max-width: 480px) {
             html, body { background-color: #f5f6f8; }
             .app-container {
-                padding: 12px;
+                padding: 6px;
                 box-shadow: none;
-                border-radius: 0;
                 margin: 0;
+                height: 100vh; /* スマホでは全画面を使い切る */
             }
         }
 
+        /* ツールバーを極力コンパクトに */
         .toolbar {
             background: white;
-            padding: 10px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.03);
+            padding: 6px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
             width: 100%;
             box-sizing: border-box;
             flex-shrink: 0;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
 
-        .button-row { display: flex; width: 100%; gap: 6px; }
+        .button-row { display: flex; width: 100%; gap: 4px; }
         .button-row + .button-row {
-            margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee;
+            margin-top: 4px; padding-top: 4px; border-top: 1px solid #eee;
         }
 
         .btn {
-            flex: 1; text-align: center; padding: 10px 0;
-            border: 2px solid transparent; border-radius: 8px;
-            cursor: pointer; font-size: 13px; font-weight: bold;
+            flex: 1; text-align: center; 
+            padding: 6px 2px; /* 高さを削る */
+            border: 2px solid transparent; border-radius: 6px;
+            cursor: pointer; font-size: 11px; /* 文字を小さく */
+            font-weight: bold;
             transition: all 0.2s; box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
         }
 
-        .tool-btn { background-color: #f3f4f6; color: #4b5563; }
-        .tool-btn:not(.active):hover { background-color: #e5e7eb; }
-        .tool-btn.active { border-color: #4a6ee0; box-shadow: 0 0 0 2px rgba(74, 110, 224, 0.15); color: inherit; }
+        /* 非アクティブ時も薄く色をつける */
+        .color-1 { background-color: #e0e7ff; color: #3730a3; }
+        .color-1.active { background-color: #c7d2fe; border-color: #4a6ee0; }
 
-        .color-1.active { background-color: #c7d2fe; color: #1e3a8a; }
-        .color-2.active { background-color: #fdba74; color: #9a3412; }
-        .color-3.active { background-color: #ef4444; color: #fff; }
-        .color-eraser.active { background-color: #374151; color: #fff; }
+        .color-2 { background-color: #ffedd5; color: #9a3412; }
+        .color-2.active { background-color: #fdba74; border-color: #ea580c; }
+
+        .color-3 { background-color: #fee2e2; color: #b91c1c; }
+        .color-3.active { background-color: #ef4444; color: #fff; border-color: #dc2626; }
+
+        .color-eraser { background-color: #f3f4f6; color: #4b5563; }
+        .color-eraser.active { background-color: #d1d5db; border-color: #6b7280; }
 
         .reset-btn { background-color: #fff; color: #6b7280; border: 1px solid #d1d5db; }
         .reset-btn:hover { background-color: #f9fafb; border-color: #9ca3af; }
         
-        /* コピー・共有ボタンを薄いブルーに調整 */
-        .action-btn { background-color: #8ba5f9; color: white; }
+        .action-btn { background-color: #8ba5f9; color: white; border: 1px solid #8ba5f9; }
         .action-btn:hover { background-color: #7490ec; }
 
+        /* 画像エリアを最大化 */
         .map-area {
             flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
             width: 100%;
+            min-height: 0; /* Flexbox内で縮小を許可 */
         }
 
         .map-container {
             position: relative;
             background-color: #fdf6e9;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+            border-radius: 8px;
             overflow: hidden;
             width: 100%; height: 100%;
             max-width: 100%; max-height: 100%;
-            /* touch-action: none; を削除し、キャンバス上でもスワイプ/ズームを可能に */
         }
 
         .map-container canvas {
@@ -116,7 +120,7 @@
                 <button class="btn tool-btn color-1 active" data-lvl="1">1 軽度</button>
                 <button class="btn tool-btn color-2" data-lvl="2">2 中度</button>
                 <button class="btn tool-btn color-3" data-lvl="3">3 重度</button>
-                <button class="btn tool-btn color-eraser" id="btn-eraser"> 消去</button>
+                <button class="btn tool-btn color-eraser" id="btn-eraser">消去</button>
             </div>
             <div class="button-row">
                 <button class="btn reset-btn" id="btn-reset">リセット</button>
@@ -170,7 +174,7 @@
                 mm.ready = true;
                 setupEvents();
             };
-            img.onerror = () => alert('画像(human.webp)が見つかりません。index.htmlと同じ場所に配置してください。');
+            img.onerror = () => alert('画像(human.webp)が見つかりません。');
             img.src = MM.IMG_SRC;
         });
 
@@ -333,7 +337,6 @@
                 });
             });
 
-            // スワイプ（スクロール）との誤爆を防ぐため、pointerdown ではなく click イベントに変更
             mm.overlay.addEventListener('click', (e) => {
                 const p = mmPixPos(e);
                 if (mm.wctx.getImageData(p.x, p.y, 1, 1).data[3] > 10) return;
@@ -386,12 +389,9 @@
                             }, 'image/png');
                         })
                     });
-
                     navigator.clipboard.write([item]).then(() => {
-                        alert('クリップボードに画像をコピーしました！');
-                    }).catch(() => {
-                        showImagePopup(canvas);
-                    });
+                        alert('コピーしました！');
+                    }).catch(() => showImagePopup(canvas));
                 } catch (err) {
                     showImagePopup(canvas);
                 }
@@ -411,7 +411,7 @@
                         });
                     }, 'image/png');
                 } else {
-                    alert('お使いのブラウザ・環境はシステム共有に対応していません。コピーボタンをご利用ください。');
+                    alert('お使いの環境はシステム共有に対応していません。');
                 }
             });
         }
@@ -421,12 +421,12 @@
             const w = window.open();
             if (w) {
                 w.document.write('<meta name="viewport" content="width=device-width, initial-scale=1.0">');
-                w.document.write('<body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f6f8;height:100vh;font-family:sans-serif;box-sizing:border-box;padding:20px;">');
-                w.document.write('<img src="' + dataUrl + '" style="max-width:100%;max-height:80vh;box-shadow:0 4px 10px rgba(0,0,0,0.1);border-radius:12px;">');
-                w.document.write('<p style="margin-top:16px;font-size:14px;color:#333;text-align:center;line-height:1.4;">画像を長押し、または右クリックして「コピー」を行ってください。</p>');
+                w.document.write('<body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f6f8;height:100vh;font-family:sans-serif;padding:20px;">');
+                w.document.write('<img src="' + dataUrl + '" style="max-width:100%;max-height:80vh;border-radius:8px;">');
+                w.document.write('<p style="font-size:14px;color:#333;margin-top:16px;">長押ししてコピーしてください</p>');
                 w.document.write('</body>');
             } else {
-                alert('お使いの環境は直接コピーに対応していません。');
+                alert('コピー機能がブロックされました。');
             }
         }
     </script>
